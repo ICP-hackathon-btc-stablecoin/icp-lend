@@ -4,8 +4,12 @@ import Result "mo:base/Result";
 import TrieMap "mo:base/TrieMap";
 import Float "mo:base/Float";
 import Prelude "mo:base/Prelude";
+import Time "mo:base/Time";
+import Timer "mo:base/Timer";  
 
 import ICRC "./ICRC";
+
+//ryjl3-tyaaa-aaaaa-aaaba-cai
 
 shared (init_msg) actor class (
   init_args : {
@@ -13,31 +17,47 @@ shared (init_msg) actor class (
     lendingToken : Principal;
   }
 ) = this {
+
   // --------------------------- GLOBALS ---------------------------
   var totalLendingToken : Nat = 0;
   var totalCollateral : Nat = 0;
   var totalBorrowed : Nat = 0;
   var totalReward : Nat = 0;
+  var collateralPriceInUsd : Float = 0.0;
+
+// AUTOMATIC RANDOM LIQUIDATION
+// create array with borrowers
+// get random number
+// add timer to check if a random borrower is healthy
 
   var borrowedLendingToken = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
   var depositedLendingToken = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
   var depositedCollateral = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
 
-type GetExchangeRateRequest = {
-  {
-    Nat; // base_asset
-    Nat; // quote_asset
-  };
-   Text: Asset;
-   Float64: Asset;
-};
+
+  public type TokenId = Nat;
+  public type LatestTokenRow = ((TokenId, TokenId), Text, Float);
 
   let priceCanister = actor("u45jl-liaaa-aaaam-abppa-cai") : actor {
-      getLatest : shared () -> async (vec record {record {nat; nat}; text; float64}) query;
-      checkStatus : shared (id : InvoiceId) -> async ?InvoiceStatus;
-      payInvoice : shared (id : InvoiceId) -> async Result.Result<(), Text>;
+    get_latest : shared query () -> async [LatestTokenRow];
   };
+
+
+  // TIME
+  private func updateCollateralPrice() : async () {
+    collateralPriceInUsd := (await priceCanister.get_latest())[2].2;
+  };
+
+  public func startTimer() : async () {
+    let _ = Timer.recurringTimer<system>(#seconds (60), updateCollateralPrice);
+  };
+
+
   // --------------------------- GETTERS ---------------------------
+
+  public query func getCollateralPrice() : async (Float) {
+    return collateralPriceInUsd;
+  };
 
   public query func getBorrowedLendingToken(user : Principal) : async (Nat) {
     let balance : ?Nat = borrowedLendingToken.get(user);
@@ -79,8 +99,7 @@ type GetExchangeRateRequest = {
     };
 
   func healthFactor(collateral : Nat, borrowed : Nat) : async (Float) {
-
-      return (Float.fromInt(collateral) * 0.80) / Float.fromInt(borrowed);
+      return (collateralPriceInUsd * Float.fromInt(collateral) * 0.80) / Float.fromInt(borrowed);
     };
     
   // --------------------------- FUNCTIONS ---------------------------
@@ -206,13 +225,13 @@ type GetExchangeRateRequest = {
   public shared (msg) func withdrawCollateral(amount : Nat) : async Result.Result<Nat, WithdrawCollateralError> {
     let token : ICRC.Actor = actor (Principal.toText(init_args.collateralToken));
 
-    let borrowed = await getBorrowedLendingToken(msg.caller);
-
     let old_collateral = await getDepositedCollateral(msg.caller);
+
     if (old_collateral < amount) {
       return #err(#InsufficientFunds { balance = old_collateral });
     };
 
+    let borrowed = await getBorrowedLendingToken(msg.caller);
     let newCollateralBalance = old_collateral - amount;
 
     if (not (await isHealthy(newCollateralBalance, borrowed))) {
@@ -261,7 +280,7 @@ type GetExchangeRateRequest = {
 
     let old_borrowedLendingToken = await getBorrowedLendingToken(msg.caller);
     let collateral = await getDepositedCollateral(msg.caller);
-    let new_borrowedLendingToken = old_balance + amount;
+    let new_borrowedLendingToken = old_borrowedLendingToken + amount;
 
     // TODO check if there is enough to lending token to borrow
     if (not (await isHealthy(collateral, new_borrowedLendingToken))) {
@@ -298,13 +317,13 @@ type GetExchangeRateRequest = {
     totalLendingToken -= amount;
 
     return #ok(block_height);
-  }
+  };
 
   // repay
   public type RepayError = {
     #InsufficientFunds : { balance : Nat };
     #BadHealth : { old_collateral : Nat; borrowed : Nat; amount: Nat};
-    #TransferError : ICRC.TransferError;
+    #TransferError : ICRC.TransferFromError;
   };
 
   public shared (msg) func repay(amount : Nat) : async Result.Result<Nat, RepayError> {
@@ -330,10 +349,12 @@ type GetExchangeRateRequest = {
     let block_height = switch (transfer_result) {
       case (#Ok(block_height)) { block_height };
       case (#Err(err)) {
+        //err here is a transferFromError
         let b = Option.get(borrowedLendingToken.get(msg.caller), 0 : Nat);
         borrowedLendingToken.put(msg.caller, b + amount);
 
         return #err(#TransferError(err));
+        //we want to return an error of type TransferError
       };
     };
 
@@ -342,7 +363,7 @@ type GetExchangeRateRequest = {
 
     return #ok(block_height);
 
-  }
+  };
 
 
   // liquidate
