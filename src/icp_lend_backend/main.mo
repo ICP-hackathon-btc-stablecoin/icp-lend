@@ -25,11 +25,6 @@ shared (init_msg) actor class (
   var totalReward : Nat = 0;
   var collateralPriceInUsd : Float = 0.0;
 
-// AUTOMATIC RANDOM LIQUIDATION
-// create array with borrowers
-// get random number
-// add timer to check if a random borrower is healthy
-
   var borrowedLendingToken = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
   var depositedLendingToken = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
   var depositedCollateral = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
@@ -45,11 +40,27 @@ shared (init_msg) actor class (
 
   // TIME
   private func updateCollateralPrice() : async () {
-    collateralPriceInUsd := (await priceCanister.get_latest())[2].2;
+    // hardcoded for hackathon demo
+    collateralPriceInUsd := 13; //(await priceCanister.get_latest())[2].2;
   };
 
-  public func startTimer() : async () {
+  private func checkRandomBorrowerLiquidatable() : async () {
+
+    for (borrower in borrowedLendingToken.keys()) {
+      let borrowed = await getBorrowedLendingToken(borrower);
+      let collateral = await getDepositedCollateral(borrower);
+
+      if (not (await isHealthy(collateral, borrowed))) {
+        let _ = liquidate(borrower);
+      };
+
+    };
+
+  };
+
+  public func startTimers() : async () {
     let _ = Timer.recurringTimer<system>(#seconds (60), updateCollateralPrice);
+    let _ = Timer.recurringTimer<system>(#seconds (10 * 60), checkRandomBorrowerLiquidatable);
   };
 
 
@@ -291,6 +302,7 @@ shared (init_msg) actor class (
         });
     };
 
+    // if its not on the map it adds it
     borrowedLendingToken.put(msg.caller, new_borrowedLendingToken);
 
     let transfer_result = await token.icrc1_transfer({
@@ -356,6 +368,11 @@ shared (init_msg) actor class (
         return #err(#TransferError(err));
         //we want to return an error of type TransferError
       };
+    };
+
+    // auto if payed everything remove from borrowersArray
+    if (new_borrowedLendingToken == 0) {
+      borrowedLendingToken.delete(msg.caller);
     };
 
     totalBorrowed -= amount;
