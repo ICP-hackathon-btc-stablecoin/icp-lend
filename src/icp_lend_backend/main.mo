@@ -37,8 +37,6 @@ shared (init_msg) actor class (
     get_latest : shared query () -> async [LatestTokenRow];
   };
 
-
-  // TIME
   private func updateCollateralPrice() : async () {
     // hardcoded for hackathon demo
     collateralPriceInUsd := 13; //(await priceCanister.get_latest())[2].2;
@@ -57,12 +55,6 @@ shared (init_msg) actor class (
     };
 
   };
-
-  public func startTimers() : async () {
-    let _ = Timer.recurringTimer<system>(#seconds (60), updateCollateralPrice);
-    let _ = Timer.recurringTimer<system>(#seconds (10 * 60), checkRandomBorrowerLiquidatable);
-  };
-
 
   // --------------------------- GETTERS ---------------------------
 
@@ -112,7 +104,30 @@ shared (init_msg) actor class (
   func healthFactor(collateral : Nat, borrowed : Nat) : async (Float) {
       return (collateralPriceInUsd * Float.fromInt(collateral) * 0.80) / Float.fromInt(borrowed);
     };
-    
+
+  func utilizationRatio() : (Float) {
+    return totalBorrowed / totalLendingToken;
+  };
+
+  func interestMultiplier() : (Float) {
+    return (fixedAnnualBorrowRate - baseRate) / utilizationRatio();
+  };
+
+  func borrowRate() : (Float) {
+    return utilizationRatio() * interestMultiplier() * baseRate;
+  };
+
+  func depositRate() : (Float) {
+    return utilizationRatio() * borrowRate();
+  };
+
+  func profitMultiplier() : (Float) {
+    return (totalLendingToken + totalReward) / totalLendingToken;
+  };
+
+  func interestCalculator(amount : Float) : (Float) {
+    return amount * borrowRate() - amount;
+  };
   // --------------------------- FUNCTIONS ---------------------------
 
   // depositLendingToken
@@ -408,4 +423,12 @@ shared (init_msg) actor class (
     return #ok();
   };
 
+  // --------------------------- TIMERS ---------------------------
+
+  public func startTimers() : async () {
+    let _ = Timer.recurringTimer<system>(#seconds (60), updateCollateralPrice);
+    let _ = Timer.recurringTimer<system>(#seconds (10 * 60), checkRandomBorrowerLiquidatable);
+  };
+
 };
+
