@@ -23,6 +23,15 @@ shared (init_msg) actor class (
   var depositedLendingToken = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
   var depositedCollateral = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
 
+type GetExchangeRateRequest = {
+  {
+    Nat; // base_asset
+    Nat; // quote_asset
+  };
+   Text: Asset;
+   Float64: Asset;
+};
+
   let priceCanister = actor("u45jl-liaaa-aaaam-abppa-cai") : actor {
       getLatest : shared () -> async (vec record {record {nat; nat}; text; float64}) query;
       checkStatus : shared (id : InvoiceId) -> async ?InvoiceStatus;
@@ -187,8 +196,6 @@ shared (init_msg) actor class (
   };
 
   // withdrawCollateral
-
-
   public type WithdrawCollateralError = {
     #InsufficientFunds : { balance : Nat };
     #BadHealth : { old_collateral : Nat; borrowed : Nat; amount: Nat};
@@ -242,21 +249,30 @@ shared (init_msg) actor class (
     return #ok(block_height);
   };
 
-
-
   // borrow
-  public shared (msg) func borrow(amount : Nat) : async Result.Result<Nat, WithdrawLendingTokenError> {
+  public type BorrowError = {
+    #InsufficientFunds : { balance : Nat };
+    #BadHealth : { old_collateral : Nat; borrowed : Nat; amount: Nat};
+    #TransferError : ICRC.TransferError;
+  };
+
+  public shared (msg) func borrow(amount : Nat) : async Result.Result<Nat, BorrowError> {
     let token : ICRC.Actor = actor (Principal.toText(init_args.lendingToken));
 
     let old_borrowedLendingToken = await getBorrowedLendingToken(msg.caller);
     let collateral = await getDepositedCollateral(msg.caller);
-    let borrowedLendingToken = old_balance - amount;
+    let new_borrowedLendingToken = old_balance + amount;
 
-    if (new_balance < 0) {
-      return #err(#InsufficientFunds { balance = old_balance });
+    // TODO check if there is enough to lending token to borrow
+    if (not (await isHealthy(collateral, new_borrowedLendingToken))) {
+      return #err(#BadHealth { 
+        old_collateral = collateral; 
+        borrowed = old_borrowedLendingToken; 
+        amount = amount
+        });
     };
 
-    borrowedLendingToken.put(msg.caller, new_balance);
+    borrowedLendingToken.put(msg.caller, new_borrowedLendingToken);
 
     let transfer_result = await token.icrc1_transfer({
       from_subaccount = null;
@@ -279,19 +295,57 @@ shared (init_msg) actor class (
     };
 
     totalBorrowed += amount;
-
-    let balance : Nat = await getBorrowedLendingToken(msg.caller);
-    borrowedLendingToken.put(msg.caller, amount + balance);
+    totalLendingToken -= amount;
 
     return #ok(block_height);
-
-
   }
 
   // repay
+  public type RepayError = {
+    #InsufficientFunds : { balance : Nat };
+    #BadHealth : { old_collateral : Nat; borrowed : Nat; amount: Nat};
+    #TransferError : ICRC.TransferError;
+  };
+
+  public shared (msg) func repay(amount : Nat) : async Result.Result<Nat, RepayError> {
+    let token : ICRC.Actor = actor (Principal.toText(init_args.lendingToken));
+
+    let old_borrowedLendingToken = await getBorrowedLendingToken(msg.caller);
+
+    // TODO ADD A FEE HERE
+    let new_borrowedLendingToken = old_borrowedLendingToken - amount;
+
+    borrowedLendingToken.put(msg.caller, new_borrowedLendingToken);
+
+    let transfer_result = await token.icrc2_transfer_from({
+      amount = amount;
+      from = { owner = msg.caller; subaccount = null };
+      to = { owner = Principal.fromActor(this); subaccount = null };
+      spender_subaccount = null;
+      fee = null;
+      memo = null;
+      created_at_time = null;
+    });
+
+    let block_height = switch (transfer_result) {
+      case (#Ok(block_height)) { block_height };
+      case (#Err(err)) {
+        let b = Option.get(borrowedLendingToken.get(msg.caller), 0 : Nat);
+        borrowedLendingToken.put(msg.caller, b + amount);
+
+        return #err(#TransferError(err));
+      };
+    };
+
+    totalBorrowed -= amount;
+    totalLendingToken += amount;
+
+    return #ok(block_height);
+
+  }
+
 
   // liquidate
-
   public type LiquidateError = {
     #InsufficientFunds : { balance : Nat };
     #IsHealthy : { collateral : Nat; borrowed : Nat};
