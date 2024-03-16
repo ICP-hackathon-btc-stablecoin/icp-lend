@@ -5,23 +5,27 @@ import TrieMap "mo:base/TrieMap";
 
 import ICRC "./ICRC";
 
-shared (init_msg) actor class Lend(
+shared (init_msg) actor class (
   init_args : {
     collateralToken : Principal;
     lendingToken : Principal;
   }
 ) = this {
-
-  var liquidity : Nat = 0;
+  // --------------------------- GLOBALS ---------------------------
+  var totalLendingToken : Nat = 0;
+  var totalCollateral : Nat = 0;
   var totalBorrowed : Nat = 0;
-  var borrowedAmount = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
-  var balances = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
+  var totalReward : Nat = 0;
+
+  var borrowedLendingToken = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
+  var depositedLendingToken = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
+  var depositedCollateral = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
 
   // --------------------------- GETTERS ---------------------------
 
-  public query func getBalance(user : Principal) : async (Nat) {
-    let currentBalance : ?Nat = balances.get(user);
-    switch (currentBalance) {
+  public query func getBorrowedLendingToken(user : Principal) : async (Nat) {
+    let balance : ?Nat = borrowedLendingToken.get(user);
+    switch (balance) {
       case (?natValue) { return natValue };
       case null {
         return 0;
@@ -29,9 +33,9 @@ shared (init_msg) actor class Lend(
     };
   };
 
-  public query func getBorrowedAmount(user : Principal) : async (Nat) {
-    let currentBorrowedAmount : ?Nat = borrowedAmount.get(user);
-    switch (currentBorrowedAmount) {
+  public query func getDepositedLendingToken(user : Principal) : async (Nat) {
+    let balance : ?Nat = depositedLendingToken.get(user);
+    switch (balance) {
       case (?natValue) { return natValue };
       case null {
         return 0;
@@ -39,17 +43,28 @@ shared (init_msg) actor class Lend(
     };
   };
 
-  // --------------------------- DEPOSIT ---------------------------
+  public query func getDepositedCollateral(user : Principal) : async (Nat) {
+    let balance : ?Nat = depositedCollateral.get(user);
+    switch (balance) {
+      case (?natValue) { return natValue };
+      case null {
+        return 0;
+      };
+    };
+  };
 
-  public type DepositError = {
+  // --------------------------- MATH ---------------------------
+
+  // --------------------------- FUNCTIONS ---------------------------
+
+  // depositLendingToken
+  public type DepositLendingTokenError = {
     #TransferFromError : ICRC.TransferFromError;
   };
 
-  public shared (msg) func deposit(amount : Nat) : async (Result.Result<Nat, DepositError>) {
-    // Fetch token
-    let token : ICRC.Actor = actor (Principal.toText(init_args.collateralToken));
+  public shared (msg) func depositLendingToken(amount : Nat) : async (Result.Result<Nat, DepositLendingTokenError>) {
+    let token : ICRC.Actor = actor (Principal.toText(init_args.lendingToken));
 
-    // Perform transaction
     let transfer_result = await token.icrc2_transfer_from({
       amount = amount;
       from = { owner = msg.caller; subaccount = null };
@@ -60,7 +75,6 @@ shared (init_msg) actor class Lend(
       created_at_time = null;
     });
 
-    // Check for transfer error
     let block_height = switch (transfer_result) {
       case (#Ok(block_height)) { block_height };
       case (#Err(err)) {
@@ -68,44 +82,33 @@ shared (init_msg) actor class Lend(
       };
     };
 
-    // Update liquidity
-    liquidity += amount;
+    totalLendingToken += amount;
 
-    // Update user's balance
-    let currentBalance : Nat = await getBalance(msg.caller);
-    balances.put(msg.caller, amount + currentBalance);
+    let balance : Nat = await getDepositedLendingToken(msg.caller);
+    depositedLendingToken.put(msg.caller, amount + balance);
 
     return #ok(block_height);
   };
 
-  // --------------------------- WITHDRAW ---------------------------
-
-  public type WithdrawError = {
+  // withdrawLendingToken
+  public type WithdrawLendingTokenError = {
     #InsufficientFunds : { balance : Nat };
-    #HasDebt : { borrowedAmount : Nat };
     #TransferError : ICRC.TransferError;
   };
 
-  public shared (msg) func withdraw(amount : Nat) : async Result.Result<Nat, WithdrawError> {
-    // Fetch token
-    let token : ICRC.Actor = actor (Principal.toText(init_args.collateralToken));
+  // Não pode levantar mais do que o totalLendingToken - é possivel chegar a esse ponto?
+  public shared (msg) func withdrawLendingToken(amount : Nat) : async Result.Result<Nat, WithdrawLendingTokenError> {
+    let token : ICRC.Actor = actor (Principal.toText(init_args.lendingToken));
 
-    // Check if the user has no debt
-    let borrowedAmount = await getBorrowedAmount(msg.caller);
-    if (borrowedAmount != 0) {
-      return #err(#HasDebt { borrowedAmount = borrowedAmount });
-    };
-
-    // Check if the user's balance is sufficient
-    let old_balance = await getBalance(msg.caller);
+    let old_balance = await getDepositedLendingToken(msg.caller);
     if (old_balance < amount) {
       return #err(#InsufficientFunds { balance = old_balance });
     };
 
     let new_balance = old_balance - amount;
-    balances.put(msg.caller, new_balance);
+    depositedLendingToken.put(msg.caller, new_balance);
 
-    // Perform transfer
+    // TODO: ADICIONAR JURO
     let transfer_result = await token.icrc1_transfer({
       from_subaccount = null;
       from = { owner = Principal.fromActor(this); subaccount = null };
@@ -116,24 +119,107 @@ shared (init_msg) actor class Lend(
       created_at_time = null;
     });
 
-    // Check for transaction error, if so cancel balance debit
     let block_height = switch (transfer_result) {
       case (#Ok(block_height)) { block_height };
       case (#Err(err)) {
-        let b = Option.get(balances.get(msg.caller), 0 : Nat);
-        balances.put(msg.caller, b + amount);
+        let b = Option.get(depositedLendingToken.get(msg.caller), 0 : Nat);
+        depositedLendingToken.put(msg.caller, b + amount);
 
         return #err(#TransferError(err));
       };
     };
 
-    // Update liquidity
-    liquidity -= amount;
+    totalLendingToken -= amount;
 
     return #ok(block_height);
   };
 
-  // --------------------------- BORROW ---------------------------
+  // depositCollateral
+  public type DepositCollateralError = {
+    #TransferFromError : ICRC.TransferFromError;
+  };
 
-  // --------------------------- REPAY ---------------------------
+  public shared (msg) func depositCollateral(amount : Nat) : async (Result.Result<Nat, DepositCollateralError>) {
+    let token : ICRC.Actor = actor (Principal.toText(init_args.collateralToken));
+
+    let transfer_result = await token.icrc2_transfer_from({
+      amount = amount;
+      from = { owner = msg.caller; subaccount = null };
+      to = { owner = Principal.fromActor(this); subaccount = null };
+      spender_subaccount = null;
+      fee = null;
+      memo = null;
+      created_at_time = null;
+    });
+
+    let block_height = switch (transfer_result) {
+      case (#Ok(block_height)) { block_height };
+      case (#Err(err)) {
+        return #err(#TransferFromError(err));
+      };
+    };
+
+    totalCollateral += amount;
+
+    let balance : Nat = await getDepositedCollateral(msg.caller);
+    depositedCollateral.put(msg.caller, amount + balance);
+
+    return #ok(block_height);
+  };
+
+  // withdrawCollateral
+  public type WithdrawCollateralError = {
+    #InsufficientFunds : { balance : Nat };
+    #HasDebt : { borrowedAmount : Nat };
+    #TransferError : ICRC.TransferError;
+  };
+
+  // alterar
+  public shared (msg) func withdrawCollateral(amount : Nat) : async Result.Result<Nat, WithdrawCollateralError> {
+    let token : ICRC.Actor = actor (Principal.toText(init_args.collateralToken));
+
+    let amount = await getBorrowedLendingToken(msg.caller);
+    if (amount != 0) {
+      return #err(#HasDebt { borrowedAmount = amount });
+    };
+
+    let old_balance = await getDepositedLendingToken(msg.caller);
+    if (old_balance < amount) {
+      return #err(#InsufficientFunds { balance = old_balance });
+    };
+
+    let new_balance = old_balance - amount;
+    depositedLendingToken.put(msg.caller, new_balance);
+
+    // TODO: ADICIONAR JURO
+    let transfer_result = await token.icrc1_transfer({
+      from_subaccount = null;
+      from = { owner = Principal.fromActor(this); subaccount = null };
+      to = { owner = msg.caller; subaccount = null };
+      amount = amount;
+      fee = null;
+      memo = null;
+      created_at_time = null;
+    });
+
+    let block_height = switch (transfer_result) {
+      case (#Ok(block_height)) { block_height };
+      case (#Err(err)) {
+        let b = Option.get(depositedLendingToken.get(msg.caller), 0 : Nat);
+        depositedLendingToken.put(msg.caller, b + amount);
+
+        return #err(#TransferError(err));
+      };
+    };
+
+    totalLendingToken -= amount;
+
+    return #ok(block_height);
+  };
+
+  // borrow
+
+  // repay
+
+  // liquidate
 };
