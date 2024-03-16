@@ -2,6 +2,7 @@ import Option "mo:base/Option";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import TrieMap "mo:base/TrieMap";
+import Float "mo:base/Float";
 
 import ICRC "./ICRC";
 
@@ -55,6 +56,13 @@ shared (init_msg) actor class (
 
   // --------------------------- MATH ---------------------------
 
+func canBeLiquidated(user : Principal) : async (Bool) {
+    let borrowed = await getBorrowedLendingToken(user);
+    let collateral = await getDepositedCollateral(user);
+
+    return (Float.fromInt(collateral) * 0.80) < Float.fromInt(borrowed);
+  };
+  
   // --------------------------- FUNCTIONS ---------------------------
 
   // depositLendingToken
