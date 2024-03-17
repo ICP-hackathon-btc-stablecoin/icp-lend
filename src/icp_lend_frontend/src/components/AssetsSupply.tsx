@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { ICP_MOCK_PRICE, collateralToken } from "../utils/constants";
 import { formatToken, parseToken } from "../utils/tokens";
 import Button from "./Button";
