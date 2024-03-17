@@ -17,7 +17,7 @@ const PositionDetails = () => {
 
   // const { data: healthFactor } = useGetHealthFactor({ principal: identity?.getPrincipal() });
 
-  const deposited = BigInt(ICP_MOCK_PRICE * (depositedCollateral || BigInt(0)));
+  const deposited = BigInt((ICP_MOCK_PRICE * (depositedCollateral || BigInt(0))) / BigInt(10 ** 8));
   const netWorth = deposited - (borrowedAmount || BigInt(0));
 
   const details = [
