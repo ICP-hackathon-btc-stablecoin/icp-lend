@@ -5,6 +5,8 @@ import Result "mo:base/Result";
 import Time "mo:base/Time";
 import Timer "mo:base/Timer";
 import TrieMap "mo:base/TrieMap";
+import Option "mo:base/Option";
+import Debug "mo:base/Debug";
 
 import ICRC "./ICRC";
 
@@ -21,7 +23,7 @@ shared (init_msg) actor class (
   var totalLendingToken : Nat = 0;
   var totalCollateral : Nat = 0;
   var totalBorrowed : Nat = 0;
-  var collateralPriceInUsd : Nat = 0;
+  var collateralPriceInUsd : Nat = 12;
 
   let lenderReward : Nat = 105000000;
   let borrowerFee : Nat = 110000000;
@@ -66,13 +68,24 @@ shared (init_msg) actor class (
   };
 
   public query func getBorrowedLendingToken(user : Principal) : async (Nat) {
-    let ?(balance, _) : ?(Nat, Time) = borrowedLendingToken.get(user);
-    return balance;
+    switch(borrowedLendingToken.get(user)) {
+      case (?(balance, _)) { return balance };
+      case (null) { return 0 };
+    };
+  };
+
+  func _getBorrowedLendingToken(user : Principal) : Nat {
+     switch(borrowedLendingToken.get(user)) {
+      case (?(balance, _)) { return balance };
+      case (null) { return 0 };
+    };
   };
 
   public query func getDepositedLendingToken(user : Principal) : async (Nat) {
-    let ?(balance, _) : ?(Nat, Time) = depositedLendingToken.get(user);
-    return balance;
+         switch(depositedLendingToken.get(user)) {
+      case (?(balance, _)) { return balance };
+      case (null) { return 0 };
+    };
   };
 
   public query func getDepositedCollateral(user : Principal) : async (Nat) {
@@ -82,6 +95,14 @@ shared (init_msg) actor class (
       case null {
         return 0;
       };
+    };
+  };
+
+  func _getDepositedCollateral(user : Principal) : Nat {
+    let balance : ?Nat = depositedCollateral.get(user);
+    switch (balance) {
+      case (?natValue) { return natValue };
+      case (null) { return 0 };
     };
   };
 
@@ -109,30 +130,6 @@ shared (init_msg) actor class (
     return (amount * (timePassed * PRECISION / 60 * 60 * 24 * 365) * borrowerFee) / (PRECISION * PRECISION);
   };
 
-  //   func utilizationRatio() : (Nat) {
-  //     return (totalBorrowed * PRECISION) / totalLendingToken;
-  //   };
-
-  //   func interestMultiplier() : (Nat) {
-  //     return (fixedAnnualBorrowRate - baseRate) * PRECISION / utilizationRatio();
-  //   };
-
-  //   func borrowRate() : (Nat) {
-  //     return utilizationRatio() * interestMultiplier() * baseRate;
-  //   };
-
-  //   func depositRate() : (Nat) {
-  //     return utilizationRatio() * borrowRate();
-  //   };
-
-  //   func profitMultiplier() : (Nat) {
-  //     return (totalLendingToken + totalReward)  * PRECISION / totalLendingToken;
-  //   };
-
-  //   func interestCalculator(amount : Nat) : (Nat) {
-  //     return amount * borrowRate() - amount;
-  //   };
-
   // --------------------------- FUNCTIONS ---------------------------
 
   // depositLendingToken
@@ -143,6 +140,7 @@ shared (init_msg) actor class (
   public shared (msg) func depositLendingToken(amount : Nat) : async (Result.Result<Nat, DepositLendingTokenError>) {
     let token : ICRC.Actor = actor (Principal.toText(init_args.lendingToken));
 
+    Debug.print("DEPOSITING LENDING TOKENS - 0");
     let transfer_result = await token.icrc2_transfer_from({
       amount = amount;
       from = { owner = msg.caller; subaccount = null };
@@ -153,6 +151,7 @@ shared (init_msg) actor class (
       created_at_time = null;
     });
 
+   Debug.print("DEPOSITING LENDING TOKENS - 1");
     let block_height = switch (transfer_result) {
       case (#Ok(block_height)) { block_height };
       case (#Err(err)) {
@@ -161,7 +160,7 @@ shared (init_msg) actor class (
     };
 
     totalLendingToken += amount;
-
+   Debug.print("DEPOSITING LENDING TOKENS - 2");
     let balance : Nat = await getDepositedLendingToken(msg.caller);
     depositedLendingToken.put(msg.caller, (amount + balance, Time.now()));
 
@@ -182,7 +181,7 @@ shared (init_msg) actor class (
 
     let withdrawAmount = await withdrawWithRewards(amount, Int.abs(currentTime - old_time));
 
-    if (old_balance < amount) {
+    if (old_balance >= amount) {
       return #err(#InsufficientFunds { balance = old_balance });
     };
 
@@ -245,8 +244,10 @@ shared (init_msg) actor class (
 
     totalCollateral += amount;
 
+
     let balance : Nat = await getDepositedCollateral(msg.caller);
     depositedCollateral.put(msg.caller, amount + balance);
+
 
     return #ok(block_height);
   };
@@ -263,8 +264,9 @@ shared (init_msg) actor class (
     let token : ICRC.Actor = actor (Principal.toText(init_args.collateralToken));
 
     let old_collateral = await getDepositedCollateral(msg.caller);
+    Debug.print("HERE 3");
 
-    if (old_collateral < amount) {
+    if (old_collateral >= amount) {
       return #err(#InsufficientFunds { balance = old_collateral });
     };
 
@@ -280,7 +282,9 @@ shared (init_msg) actor class (
         }
       );
     };
+        Debug.print(debug_show(totalCollateral));
 
+    Debug.print("HERE 4");
     depositedCollateral.put(msg.caller, newCollateralBalance);
 
     let transfer_result = await token.icrc1_transfer({
@@ -314,9 +318,13 @@ shared (init_msg) actor class (
   public shared (msg) func borrow(amount : Nat) : async Result.Result<Nat, BorrowError> {
     let token : ICRC.Actor = actor (Principal.toText(init_args.lendingToken));
 
-    let old_borrowedLendingToken = await getBorrowedLendingToken(msg.caller);
-    let collateral = await getDepositedCollateral(msg.caller);
+    Debug.print("BORROWING - 0");
+    let old_borrowedLendingToken = _getBorrowedLendingToken(msg.caller);
+    Debug.print("BORROWING - 1");
     let new_borrowedLendingToken = old_borrowedLendingToken + amount;
+    Debug.print("BORROWING - 2");
+    let collateral = _getDepositedCollateral(msg.caller);
+    Debug.print("BORROWING - 3");
 
     // TODO check if there is enough to lending token to borrow
     if (not (await isHealthy(collateral, new_borrowedLendingToken))) {
@@ -342,6 +350,9 @@ shared (init_msg) actor class (
       created_at_time = null;
     });
 
+    Debug.print("HERE 4");
+    Debug.print(debug_show(transfer_result));
+
     let block_height = switch (transfer_result) {
       case (#Ok(block_height)) { block_height };
       case (#Err(err)) {
@@ -349,6 +360,8 @@ shared (init_msg) actor class (
         return #err(#TransferError(err));
       };
     };
+    Debug.print("HERE 5");
+    Debug.print(debug_show(transfer_result));
 
     totalBorrowed += amount;
     totalLendingToken -= amount;
