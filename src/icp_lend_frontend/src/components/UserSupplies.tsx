@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 // import { useGetDepositedCollateral } from "../canisters/icp_lend_backend/api/getDepositedCollateral";
-import { collateralToken } from "../utils/constants";
+import { ICP_MOCK_PRICE, collateralToken } from "../utils/constants";
 import Button from "./Button";
 import Card from "./Card";
 import Table from "./Table";
@@ -9,12 +9,16 @@ import Modal from "./Modal";
 import Input from "./Input";
 import { useWithdrawCollateral } from "../canisters/icp_lend_backend/api/withdrawCollateral";
 import toast from "react-hot-toast";
-import { parseToken } from "../utils/tokens";
+import { formatToken, parseToken } from "../utils/tokens";
+import { useGetDepositedCollateral } from "../canisters/icp_lend_backend/api/getDepositedCollateral";
+import { useAuth } from "../auth/hooks/useAuth";
 
 const UserSupplies = () => {
+  const { identity } = useAuth();
   const [amount, setAmount] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const { data: depositedCollateral } = useGetDepositedCollateral({ principal: identity?.getPrincipal() });
   const { mutate: withdrawCollateral, isPending } = useWithdrawCollateral();
 
   const handleSubmit = useCallback(async () => {
@@ -38,10 +42,7 @@ const UserSupplies = () => {
     }
   }, [amount, withdrawCollateral]);
 
-  // const { data } = useGetDepositedCollateral();
-
-  // Get User supplied amount
-  const value = BigInt(0);
+  const value = formatToken(ICP_MOCK_PRICE * (depositedCollateral || BigInt(0)));
 
   return (
     <>

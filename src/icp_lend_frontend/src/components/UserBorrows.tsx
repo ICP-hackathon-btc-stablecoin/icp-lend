@@ -8,12 +8,16 @@ import Table from "./Table";
 import Typography from "./Typography";
 import { useRepayLoan } from "../canisters/icp_lend_backend/api/repayLoan";
 import toast from "react-hot-toast";
-import { parseToken } from "../utils/tokens";
+import { formatToken, parseToken } from "../utils/tokens";
+import { useGetBorrowedLendingToken } from "../canisters/icp_lend_backend/api/getBorrowedLendingToken";
+import { useAuth } from "../auth/hooks/useAuth";
 
 const UserBorrows = () => {
+  const { identity } = useAuth();
   const [amount, setAmount] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const { data: borrowedAmount } = useGetBorrowedLendingToken({ principal: identity?.getPrincipal() });
   const { mutate: repayLoan, isPending } = useRepayLoan();
 
   const handleSubmit = useCallback(async () => {
@@ -37,8 +41,7 @@ const UserBorrows = () => {
     }
   }, [amount, repayLoan]);
 
-  // Get User borrowed amount
-  const value = BigInt(0);
+  const value = formatToken(borrowedAmount || 0);
 
   return (
     <>
