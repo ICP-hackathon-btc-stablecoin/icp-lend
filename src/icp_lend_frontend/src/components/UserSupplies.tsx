@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useGetDepositedCollateral } from "../canisters/icp_lend_backend/api/getDepositedCollateral";
+// import { useGetDepositedCollateral } from "../canisters/icp_lend_backend/api/getDepositedCollateral";
 import { collateralToken } from "../utils/constants";
 import Button from "./Button";
 import Card from "./Card";
@@ -38,7 +38,7 @@ const UserSupplies = () => {
     }
   }, [amount, withdrawCollateral]);
 
-  const { data } = useGetDepositedCollateral();
+  // const { data } = useGetDepositedCollateral();
 
   // Get User supplied amount
   const value = BigInt(0);
