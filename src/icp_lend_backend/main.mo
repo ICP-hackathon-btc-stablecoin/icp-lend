@@ -139,11 +139,11 @@ shared (init_msg) actor class (
   public shared (msg) func depositLendingToken(amount : Nat) : async (Result.Result<Nat, DepositLendingTokenError>) {
     let token : ICRC.Actor = actor (Principal.toText(init_args.lendingToken));
 
-    let transfer_result = await token.icrc1_transfer({
-      from_subaccount = null;
+    let transfer_result = await token.icrc2_transfer_from({
+      amount = amount;
       from = { owner = msg.caller; subaccount = null };
       to = { owner = Principal.fromActor(this); subaccount = null };
-      amount = amount;
+      spender_subaccount = null;
       fee = null;
       memo = null;
       created_at_time = null;
@@ -222,11 +222,11 @@ shared (init_msg) actor class (
   public shared (msg) func depositCollateral(amount : Nat) : async (Result.Result<Nat, DepositCollateralError>) {
     let token : ICRC.Actor = actor (Principal.toText(init_args.collateralToken));
 
-    let transfer_result = await token.icrc1_transfer({
-      from_subaccount = null;
+    let transfer_result = await token.icrc2_transfer_from({
+      amount = amount;
       from = { owner = msg.caller; subaccount = null };
       to = { owner = Principal.fromActor(this); subaccount = null };
-      amount = amount;
+      spender_subaccount = null;
       fee = null;
       memo = null;
       created_at_time = null;
@@ -370,11 +370,11 @@ shared (init_msg) actor class (
 
     borrowedLendingToken.put(msg.caller, (new_borrowedLendingToken, Time.now()));
 
-    let transfer_result = await token.icrc1_transfer({
-      from_subaccount = null;
+    let transfer_result = await token.icrc2_transfer_from({
+      amount = withdrawWithFeeAmt;
       from = { owner = msg.caller; subaccount = null };
       to = { owner = Principal.fromActor(this); subaccount = null };
-      amount = withdrawWithFeeAmt;
+      spender_subaccount = null;
       fee = null;
       memo = null;
       created_at_time = null;
