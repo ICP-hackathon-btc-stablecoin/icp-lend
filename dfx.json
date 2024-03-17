@@ -5,14 +5,20 @@
       "type": "motoko"
     },
     "icp_lend_frontend": {
-      "dependencies": [
-        "icp_lend_backend"
-      ],
-      "source": [
-        "src/icp_lend_frontend/dist"
-      ],
+      "dependencies": ["icp_lend_backend"],
+      "source": ["src/icp_lend_frontend/dist"],
       "type": "assets",
       "workspace": "icp_lend_frontend"
+    },
+    "usdt": {
+      "type": "custom",
+      "candid": "https://raw.githubusercontent.com/dfinity/ic/2e3589427cd9648d4edaebc1b96b5daf8fdd94d8/rs/rosetta-api/icrc1/ledger/ledger.did",
+      "wasm": "https://download.dfinity.systems/ic/2e3589427cd9648d4edaebc1b96b5daf8fdd94d8/canisters/ic-icrc1-ledger.wasm.gz"
+    },
+    "icp": {
+      "type": "custom",
+      "candid": "https://raw.githubusercontent.com/dfinity/ic/2e3589427cd9648d4edaebc1b96b5daf8fdd94d8/rs/rosetta-api/icrc1/ledger/ledger.did",
+      "wasm": "https://download.dfinity.systems/ic/2e3589427cd9648d4edaebc1b96b5daf8fdd94d8/canisters/ic-icrc1-ledger.wasm.gz"
     },
     "internet_identity": {
       "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",

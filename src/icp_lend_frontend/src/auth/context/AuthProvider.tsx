@@ -8,10 +8,11 @@ import { createAgent } from "@dfinity/utils";
 // Mode
 const development = process.env.DFX_NETWORK !== "ic";
 // Identity provider URL
-// const IDENTITY_PROVIDER = development
-//   ? `http://${process.env.CANISTER_ID_INTERNET_IDENTITY}.localhost:4943`
-//   : "https://identity.ic0.app";
-const IDENTITY_PROVIDER = "https://identity.ic0.app";
+const IDENTITY_PROVIDER = development
+  ? `http://${process.env.CANISTER_ID_INTERNET_IDENTITY}.localhost:4943`
+  : "https://identity.ic0.app";
+
+// const IDENTITY_PROVIDER = "https://identity.ic0.app";
 
 // Create a context for authentication
 export const AuthContext = createContext<Partial<AuthContextType>>({});
@@ -65,8 +66,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Create an agent
     const agent = await createAgent({
       identity,
-      host: "https:icp0.io"
-      // host: development ? "http://localhost:4943" : "https:icp0.io"
+      // host: "https:icp0.io"
+      host: development ? "http://localhost:4943" : "https:icp0.io"
     });
     if (development) {
       await agent.fetchRootKey();

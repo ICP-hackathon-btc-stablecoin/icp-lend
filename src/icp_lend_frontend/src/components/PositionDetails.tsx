@@ -1,15 +1,14 @@
 import { useAuth } from "../auth/hooks/useAuth";
 import { useGetBorrowedLendingToken } from "../canisters/icp_lend_backend/api/getBorrowedLendingToken";
 import { useGetDepositedCollateral } from "../canisters/icp_lend_backend/api/getDepositedCollateral";
-import useIcpLedger from "../hooks/useIcpLedger";
 import useIcrcLedger from "../hooks/useIcrcLedger";
 import { ICP_MOCK_PRICE } from "../utils/constants";
 import Typography from "./Typography";
 
 const PositionDetails = () => {
   const { identity } = useAuth();
-  const { balance } = useIcpLedger();
-  const { balance: icrcBalance } = useIcrcLedger();
+  const { balance } = useIcrcLedger(process.env.CANISTER_ID_ICP!);
+  const { balance: icrcBalance } = useIcrcLedger(process.env.CANISTER_ID_USDT!);
 
   const { data: borrowedAmount } = useGetBorrowedLendingToken({ principal: identity?.getPrincipal() });
   const { data: depositedCollateral } = useGetDepositedCollateral({ principal: identity?.getPrincipal() });

@@ -2,33 +2,34 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../auth/hooks/useAuth";
 import { IcrcLedgerCanister } from "@dfinity/ledger-icrc";
 
-export default function useIcrcLedger() {
+export default function useIcrcLedger(canisterId?: any) {
   const { identity, agent } = useAuth();
   const [balance, setBalance] = useState<bigint>(BigInt(0));
 
-  const getIcpBalance = useCallback(async () => {
-    const principal = identity?.getPrincipal();
+  const getIcrcBalance = useCallback(async () => {
+    if (canisterId) {
+      const principal = identity?.getPrincipal();
 
-    const ledger = IcrcLedgerCanister.create({
-      agent,
-      // @ts-expect-error type
-      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai"
-    });
-
-    if (principal) {
-      const data = await ledger.balance({
-        owner: principal
+      const ledger = IcrcLedgerCanister.create({
+        agent,
+        canisterId
       });
 
-      console.log({ data });
+      if (principal) {
+        const data = await ledger.balance({
+          owner: principal
+        });
 
-      setBalance(data);
+        console.log({ data });
+
+        setBalance(data);
+      }
     }
-  }, [agent, identity]);
+  }, [agent, canisterId, identity]);
 
   useEffect(() => {
-    getIcpBalance();
-  }, [agent, balance, getIcpBalance, identity]);
+    getIcrcBalance();
+  }, [agent, balance, getIcrcBalance, identity]);
 
   return { balance };
 }

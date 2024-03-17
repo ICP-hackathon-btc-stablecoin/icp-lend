@@ -8,6 +8,7 @@ export const borrowAmount = async (amount: any) => {
     await icp_lend_backend.borrow(amount);
   } catch (error: any) {
     console.error(error);
+    throw error;
   }
 };
 

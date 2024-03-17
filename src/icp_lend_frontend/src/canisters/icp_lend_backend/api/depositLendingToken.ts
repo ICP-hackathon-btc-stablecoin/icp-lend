@@ -8,6 +8,7 @@ export const depositLendingToken = async (amount: any) => {
     await icp_lend_backend.depositLendingToken(amount);
   } catch (error: any) {
     console.error(error);
+    throw error;
   }
 };
 

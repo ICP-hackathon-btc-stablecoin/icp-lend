@@ -8,6 +8,7 @@ export const repayLoan = async (amount: any) => {
     await icp_lend_backend.repay(amount);
   } catch (error: any) {
     console.error(error);
+    throw error;
   }
 };
 

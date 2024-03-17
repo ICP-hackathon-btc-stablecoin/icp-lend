@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import useIcpLedger from "../hooks/useIcpLedger";
 import { ICP_MOCK_PRICE, collateralToken } from "../utils/constants";
 import { formatToken, parseToken } from "../utils/tokens";
 import Button from "./Button";
@@ -10,12 +9,13 @@ import Modal from "./Modal";
 import Input from "./Input";
 import { useDepositCollateral } from "../canisters/icp_lend_backend/api/depositCollateral";
 import toast from "react-hot-toast";
+import useIcrcLedger from "../hooks/useIcrcLedger";
 
 const AssetsSupply = () => {
   const [amount, setAmount] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { balance } = useIcpLedger();
+  const { balance } = useIcrcLedger(process.env.CANISTER_ID_ICP!);
 
   const { mutate: depositCollateral, isPending } = useDepositCollateral();
 

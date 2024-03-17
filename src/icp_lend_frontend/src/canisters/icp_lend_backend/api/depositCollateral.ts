@@ -9,7 +9,7 @@ export const depositCollateral = async (amount: any) => {
     return;
   } catch (error: any) {
     console.error(error);
-    return;
+    throw error;
   }
 };
 
