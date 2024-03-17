@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ICP_MOCK_PRICE, collateralToken } from "../utils/constants";
 import { formatToken, parseToken } from "../utils/tokens";
 import Button from "./Button";
@@ -14,10 +14,13 @@ import useIcrcLedger from "../hooks/useIcrcLedger";
 const AssetsSupply = () => {
   const [amount, setAmount] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { balance } = useIcrcLedger(process.env.CANISTER_ID_ICP!);
+  const { balance, tokenAllowance, setAllowance, checkAllowance } = useIcrcLedger(process.env.CANISTER_ID_ICP!);
 
   const { mutate: depositCollateral, isPending } = useDepositCollateral();
+
+  const hasAllowance = tokenAllowance >= BigInt(Number(amount) * 10 ** 8);
 
   const handleSubmit = useCallback(async () => {
     if (!amount) {
@@ -39,6 +42,13 @@ const AssetsSupply = () => {
       toast.error("Something went wrong");
     }
   }, [amount, depositCollateral]);
+
+  const handleApprove = async () => {
+    setIsLoading(true);
+    await setAllowance();
+    await checkAllowance();
+    setIsLoading(false);
+  };
 
   return (
     <>
@@ -68,8 +78,9 @@ const AssetsSupply = () => {
         title={`Supply ${collateralToken.symbol}`}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSubmit={handleSubmit}
-        isLoading={isPending}
+        onSubmit={hasAllowance ? handleSubmit : handleApprove}
+        buttonLabel={hasAllowance ? "Submit" : "Approve"}
+        isLoading={isPending || isLoading}
       >
         <Input value={amount} onChange={(e: any) => setAmount(e.target.value)} label="Amount" placeholder="0.00" />
       </Modal>

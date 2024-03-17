@@ -38,7 +38,7 @@ const AssetsBorrow = () => {
   }, [amount, borrowAmount]);
 
   // Get Lending Token amount available in Pool
-  const value = 1000;
+  const value = "-" || 1000;
 
   return (
     <>

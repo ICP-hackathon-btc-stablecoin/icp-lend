@@ -5,12 +5,14 @@ const Modal = ({
   children,
   isOpen,
   isLoading,
+  buttonLabel = "Submit",
   onClose,
   onSubmit
 }: {
   title: string;
   children?: any;
   isOpen: boolean;
+  buttonLabel?: string;
   isLoading?: boolean;
   onClose: () => void;
   onSubmit: () => void;
@@ -39,7 +41,7 @@ const Modal = ({
 
             <div className="flex items-center justify-end p-6 border-t border-solid border-blueGray-200 rounded-b">
               <Button isLoading={isLoading} onClick={onSubmit}>
-                Submit
+                {buttonLabel}
               </Button>
             </div>
           </div>
