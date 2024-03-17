@@ -7,6 +7,8 @@ export default function ConnectButton() {
   const { identity, login, logout, isAuthenticated } = useAuth();
   const address = identity?.getPrincipal().toString() || "";
 
+  console.log(address);
+
   if (isAuthenticated) {
     return (
       <div className="flex flex-1 gap-2 items-center">
