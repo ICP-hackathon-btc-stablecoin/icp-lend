@@ -3,8 +3,11 @@ import Dashboard from "./routes/Dashboard";
 import Layout from "./components/Layout";
 
 import "./styles/globals.css";
+// @ts-expect-error "import alias"
+import { icp_lend_backend } from "declarations/icp_lend_backend";
 
 export default function App() {
+  console.log(icp_lend_backend);
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
