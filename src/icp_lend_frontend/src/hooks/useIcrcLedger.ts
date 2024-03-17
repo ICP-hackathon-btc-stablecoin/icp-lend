@@ -8,12 +8,12 @@ export default function useIcrcLedger(canisterId?: any) {
   const [balance, setBalance] = useState<bigint>(BigInt(0));
   const [tokenAllowance, setTokenAllowance] = useState<any>(BigInt(0));
 
-  const ledger = IcrcLedgerCanister.create({
-    agent,
-    canisterId
-  });
-
   const checkAllowance = useCallback(async () => {
+    const ledger = IcrcLedgerCanister.create({
+      agent,
+      canisterId
+    });
+
     const principal = identity?.getPrincipal();
     if (principal) {
       const data = await ledger.allowance({
@@ -24,16 +24,30 @@ export default function useIcrcLedger(canisterId?: any) {
       setTokenAllowance(data.allowance);
       return data.allowance;
     }
-  }, [identity, ledger]);
+  }, [agent, canisterId, identity]);
 
   const setAllowance = useCallback(async () => {
+    if (!agent && !canisterId) return;
+
+    const ledger = IcrcLedgerCanister.create({
+      agent,
+      canisterId
+    });
+
     await ledger.approve({
       amount: BigInt(Number.MAX_SAFE_INTEGER),
       spender: { owner: Principal.fromText(process.env.CANISTER_ID_ICP_LEND_BACKEND!), subaccount: [] }
     });
-  }, [ledger]);
+  }, [agent, canisterId]);
 
   const getIcrcBalance = useCallback(async () => {
+    if (!agent && !canisterId) return;
+
+    const ledger = IcrcLedgerCanister.create({
+      agent,
+      canisterId
+    });
+
     if (canisterId) {
       const principal = identity?.getPrincipal();
 
@@ -45,7 +59,7 @@ export default function useIcrcLedger(canisterId?: any) {
         setBalance(data);
       }
     }
-  }, [canisterId, identity, ledger]);
+  }, [agent, canisterId, identity]);
 
   useEffect(() => {
     getIcrcBalance();

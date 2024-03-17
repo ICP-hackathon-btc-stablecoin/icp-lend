@@ -15,6 +15,7 @@ export const getBorrowedLendingToken = async (principal: any) => {
 export const useGetBorrowedLendingToken = ({ principal }: { principal: any }) => {
   return useQuery({
     queryKey: ["borrowed-lending-token", principal],
-    queryFn: () => getBorrowedLendingToken(principal)
+    queryFn: () => getBorrowedLendingToken(principal),
+    enabled: !!principal
   });
 };

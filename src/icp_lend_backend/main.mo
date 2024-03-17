@@ -85,6 +85,10 @@ shared (init_msg) actor class (
     };
   };
 
+  public query (msg) func whoami() : async Principal {
+    return msg.caller;
+  };
+
   // --------------------------- MATH ---------------------------
 
   func isHealthy(collateral : Nat, borrowed : Nat) : async (Bool) {

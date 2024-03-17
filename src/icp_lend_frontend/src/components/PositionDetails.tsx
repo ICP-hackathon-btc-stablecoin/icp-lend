@@ -1,8 +1,10 @@
 import { useAuth } from "../auth/hooks/useAuth";
 import { useGetBorrowedLendingToken } from "../canisters/icp_lend_backend/api/getBorrowedLendingToken";
 import { useGetDepositedCollateral } from "../canisters/icp_lend_backend/api/getDepositedCollateral";
+// import { useGetHealthFactor } from "../canisters/icp_lend_backend/api/getHealthFactor";
 import useIcrcLedger from "../hooks/useIcrcLedger";
 import { ICP_MOCK_PRICE } from "../utils/constants";
+import { formatToken } from "../utils/tokens";
 import Typography from "./Typography";
 
 const PositionDetails = () => {
@@ -13,12 +15,14 @@ const PositionDetails = () => {
   const { data: borrowedAmount } = useGetBorrowedLendingToken({ principal: identity?.getPrincipal() });
   const { data: depositedCollateral } = useGetDepositedCollateral({ principal: identity?.getPrincipal() });
 
+  // const { data: healthFactor } = useGetHealthFactor({ principal: identity?.getPrincipal() });
+
   const deposited = BigInt(ICP_MOCK_PRICE * (depositedCollateral || BigInt(0)));
   const netWorth = deposited - (borrowedAmount || BigInt(0));
 
   const details = [
-    { label: "Net worth", value: "$ " + netWorth },
-    { label: "Health factor", value: "2.4" }
+    { label: "Net worth", value: "$ " + formatToken(netWorth) }
+    // { label: "Health factor", value: healthFactor }
   ];
 
   return (
@@ -56,13 +60,13 @@ const PositionDetails = () => {
               <Typography variant="labelS" className="text-gray-500">
                 ICP:{" "}
               </Typography>
-              {balance?.toString() || 0}
+              {Number(balance || 0) / 10 ** 8}
             </div>
             <div>
               <Typography variant="labelS" className="text-gray-500">
                 ckUSDT:{" "}
               </Typography>
-              {icrcBalance?.toString() || 0}
+              {Number(icrcBalance || 0) / 10 ** 8}
             </div>
           </div>
         </div>

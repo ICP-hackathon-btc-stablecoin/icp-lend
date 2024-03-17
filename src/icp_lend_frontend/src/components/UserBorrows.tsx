@@ -13,7 +13,7 @@ import { useGetBorrowedLendingToken } from "../canisters/icp_lend_backend/api/ge
 import { useAuth } from "../auth/hooks/useAuth";
 
 const UserBorrows = () => {
-  const { identity } = useAuth();
+  const { identity, authClient } = useAuth();
   const [amount, setAmount] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -27,19 +27,22 @@ const UserBorrows = () => {
     }
 
     try {
-      repayLoan(parseToken(amount), {
-        async onSuccess() {
-          toast.success("Loan repaid!");
-          setIsModalOpen(false);
-        },
-        onError() {
-          toast.error("Something went wrong");
+      repayLoan(
+        { amount: parseToken(amount), authClient },
+        {
+          async onSuccess() {
+            toast.success("Loan repaid!");
+            setIsModalOpen(false);
+          },
+          onError() {
+            toast.error("Something went wrong");
+          }
         }
-      });
+      );
     } catch (err) {
       toast.error("Something went wrong");
     }
-  }, [amount, repayLoan]);
+  }, [amount, authClient, repayLoan]);
 
   const value = formatToken(borrowedAmount || 0);
 

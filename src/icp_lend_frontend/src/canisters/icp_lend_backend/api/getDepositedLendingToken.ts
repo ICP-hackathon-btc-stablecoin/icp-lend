@@ -15,6 +15,7 @@ export const getDepositedLendingToken = async (principal: any) => {
 export const useGetDepositedLendingToken = ({ principal }: { principal: any }) => {
   return useQuery({
     queryKey: ["deposited-lending-token", principal],
-    queryFn: () => getDepositedLendingToken(principal)
+    queryFn: () => getDepositedLendingToken(principal),
+    enabled: !!principal
   });
 };

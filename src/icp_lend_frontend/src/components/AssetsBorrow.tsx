@@ -9,8 +9,10 @@ import Input from "./Input";
 import { useBorrowAmount } from "../canisters/icp_lend_backend/api/borrowAmount";
 import toast from "react-hot-toast";
 import { parseToken } from "../utils/tokens";
+import { useAuth } from "../auth/hooks/useAuth";
 
 const AssetsBorrow = () => {
+  const { authClient } = useAuth();
   const [amount, setAmount] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -23,19 +25,22 @@ const AssetsBorrow = () => {
     }
 
     try {
-      borrowAmount(parseToken(amount), {
-        async onSuccess() {
-          toast.success("Amount borrowed!");
-          setIsModalOpen(false);
-        },
-        onError() {
-          toast.error("Something went wrong");
+      borrowAmount(
+        { amount: parseToken(amount), authClient },
+        {
+          async onSuccess() {
+            toast.success("Amount borrowed!");
+            setIsModalOpen(false);
+          },
+          onError() {
+            toast.error("Something went wrong");
+          }
         }
-      });
+      );
     } catch (err) {
       toast.error("Something went wrong");
     }
-  }, [amount, borrowAmount]);
+  }, [amount, authClient, borrowAmount]);
 
   // Get Lending Token amount available in Pool
   const value = "-" || 1000;

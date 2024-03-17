@@ -1,11 +1,10 @@
-// @ts-expect-error "import alias"
-import { icp_lend_backend } from "declarations/icp_lend_backend";
-
 import { useMutation } from "@tanstack/react-query";
+import getActor from "../../../auth/utils/getActor";
 
-export const depositLendingToken = async (amount: any) => {
+export const depositLendingToken = async ({ amount, authClient }: any) => {
   try {
-    await icp_lend_backend.depositLendingToken(amount);
+    const actor = await getActor(authClient);
+    await actor.depositLendingToken(amount);
   } catch (error: any) {
     console.error(error);
     throw error;
@@ -14,6 +13,6 @@ export const depositLendingToken = async (amount: any) => {
 
 export const useDepositLendingToken = () => {
   return useMutation({
-    mutationFn: (amount: any) => depositLendingToken(amount)
+    mutationFn: (data: any) => depositLendingToken(data)
   });
 };
