@@ -1,10 +1,10 @@
+import Float "mo:base/Float";
+import Int "mo:base/Int";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
-import TrieMap "mo:base/TrieMap";
-import Float "mo:base/Float";
 import Time "mo:base/Time";
-import Timer "mo:base/Timer";  
-import Int "mo:base/Int";
+import Timer "mo:base/Timer";
+import TrieMap "mo:base/TrieMap";
 
 import ICRC "./ICRC";
 
@@ -23,7 +23,6 @@ shared (init_msg) actor class (
   var totalBorrowed : Nat = 0;
   var collateralPriceInUsd : Nat = 0;
 
-
   let lenderReward : Nat = 105000000;
   let borrowerFee : Nat = 110000000;
   let PRECISION : Nat = 100000000;
@@ -34,11 +33,10 @@ shared (init_msg) actor class (
   var depositedLendingToken = TrieMap.TrieMap<Principal, (Nat, Time)>(Principal.equal, Principal.hash);
   var depositedCollateral = TrieMap.TrieMap<Principal, Nat>(Principal.equal, Principal.hash);
 
-
   public type TokenId = Nat;
   public type LatestTokenRow = ((TokenId, TokenId), Text, Float);
 
-  let priceCanister  = actor("u45jl-liaaa-aaaam-abppa-cai") : actor {
+  let priceCanister = actor ("u45jl-liaaa-aaaam-abppa-cai") : actor {
     get_latest : shared query () -> async [LatestTokenRow];
   };
 
@@ -63,13 +61,12 @@ shared (init_msg) actor class (
 
   // --------------------------- GETTERS ---------------------------
 
-
   public query func getCollateralPrice() : async (Nat) {
     return collateralPriceInUsd;
   };
 
   public query func getBorrowedLendingToken(user : Principal) : async (Nat) {
-    let ?(balance, _) : ?(Nat, Time)  = borrowedLendingToken.get(user);
+    let ?(balance, _) : ?(Nat, Time) = borrowedLendingToken.get(user);
     return balance;
   };
 
@@ -88,53 +85,50 @@ shared (init_msg) actor class (
     };
   };
 
-  
-
   // --------------------------- MATH ---------------------------
 
   func isHealthy(collateral : Nat, borrowed : Nat) : async (Bool) {
-      let health = await healthFactor(collateral, borrowed);
-      return health > (1 * PRECISION);
-    };
+    let health = await healthFactor(collateral, borrowed);
+    return health > (1 * PRECISION);
+  };
 
   func healthFactor(collateral : Nat, borrowed : Nat) : async (Nat) {
-      return (collateralPriceInUsd * collateral * 5 * 10000000) / borrowed;
-    };
+    return (collateralPriceInUsd * collateral * 5 * 10000000) / borrowed;
+  };
 
-    // amount * (fração do ano que passou) * 1.05
-    func withdrawWithRewards(amount : Nat, timePassed : Nat) : async (Nat) {      
-        return (amount * (timePassed * PRECISION /  60 * 60 * 24 * 365) * lenderReward) / (PRECISION * PRECISION);
-    };
+  // amount * (fração do ano que passou) * 1.05
+  func withdrawWithRewards(amount : Nat, timePassed : Nat) : async (Nat) {
+    return (amount * (timePassed * PRECISION / 60 * 60 * 24 * 365) * lenderReward) / (PRECISION * PRECISION);
+  };
 
-    func withdrawWithFee(amount : Nat, timePassed : Nat) : async (Nat) {      
-        return (amount * (timePassed * PRECISION /  60 * 60 * 24 * 365) * borrowerFee) / (PRECISION * PRECISION);
-    };
+  func withdrawWithFee(amount : Nat, timePassed : Nat) : async (Nat) {
+    return (amount * (timePassed * PRECISION / 60 * 60 * 24 * 365) * borrowerFee) / (PRECISION * PRECISION);
+  };
 
+  //   func utilizationRatio() : (Nat) {
+  //     return (totalBorrowed * PRECISION) / totalLendingToken;
+  //   };
 
-//   func utilizationRatio() : (Nat) {
-//     return (totalBorrowed * PRECISION) / totalLendingToken;
-//   };
+  //   func interestMultiplier() : (Nat) {
+  //     return (fixedAnnualBorrowRate - baseRate) * PRECISION / utilizationRatio();
+  //   };
 
-//   func interestMultiplier() : (Nat) {
-//     return (fixedAnnualBorrowRate - baseRate) * PRECISION / utilizationRatio();
-//   };
+  //   func borrowRate() : (Nat) {
+  //     return utilizationRatio() * interestMultiplier() * baseRate;
+  //   };
 
-//   func borrowRate() : (Nat) {
-//     return utilizationRatio() * interestMultiplier() * baseRate;
-//   };
+  //   func depositRate() : (Nat) {
+  //     return utilizationRatio() * borrowRate();
+  //   };
 
-//   func depositRate() : (Nat) {
-//     return utilizationRatio() * borrowRate();
-//   };
+  //   func profitMultiplier() : (Nat) {
+  //     return (totalLendingToken + totalReward)  * PRECISION / totalLendingToken;
+  //   };
 
-//   func profitMultiplier() : (Nat) {
-//     return (totalLendingToken + totalReward)  * PRECISION / totalLendingToken;
-//   };
+  //   func interestCalculator(amount : Nat) : (Nat) {
+  //     return amount * borrowRate() - amount;
+  //   };
 
-//   func interestCalculator(amount : Nat) : (Nat) {
-//     return amount * borrowRate() - amount;
-//   };
-  
   // --------------------------- FUNCTIONS ---------------------------
 
   // depositLendingToken
@@ -145,11 +139,11 @@ shared (init_msg) actor class (
   public shared (msg) func depositLendingToken(amount : Nat) : async (Result.Result<Nat, DepositLendingTokenError>) {
     let token : ICRC.Actor = actor (Principal.toText(init_args.lendingToken));
 
-    let transfer_result = await token.icrc2_transfer_from({
-      amount = amount;
+    let transfer_result = await token.icrc1_transfer({
+      from_subaccount = null;
       from = { owner = msg.caller; subaccount = null };
       to = { owner = Principal.fromActor(this); subaccount = null };
-      spender_subaccount = null;
+      amount = amount;
       fee = null;
       memo = null;
       created_at_time = null;
@@ -178,12 +172,12 @@ shared (init_msg) actor class (
 
   public shared (msg) func withdrawLendingToken(amount : Nat) : async Result.Result<Nat, WithdrawLendingTokenError> {
     let token : ICRC.Actor = actor (Principal.toText(init_args.lendingToken));
-    
+
     let currentTime = Time.now();
     let ?(old_balance, old_time) : ?(Nat, Time) = depositedLendingToken.get(msg.caller);
 
     let withdrawAmount = await withdrawWithRewards(amount, Int.abs(currentTime - old_time));
-    
+
     if (old_balance < amount) {
       return #err(#InsufficientFunds { balance = old_balance });
     };
@@ -209,7 +203,7 @@ shared (init_msg) actor class (
       };
     };
 
-    if (new_balance == 0){
+    if (new_balance == 0) {
       depositedLendingToken.delete(msg.caller);
     } else {
       depositedLendingToken.put(msg.caller, (new_balance, Time.now()));
@@ -228,11 +222,11 @@ shared (init_msg) actor class (
   public shared (msg) func depositCollateral(amount : Nat) : async (Result.Result<Nat, DepositCollateralError>) {
     let token : ICRC.Actor = actor (Principal.toText(init_args.collateralToken));
 
-    let transfer_result = await token.icrc2_transfer_from({
-      amount = amount;
+    let transfer_result = await token.icrc1_transfer({
+      from_subaccount = null;
       from = { owner = msg.caller; subaccount = null };
       to = { owner = Principal.fromActor(this); subaccount = null };
-      spender_subaccount = null;
+      amount = amount;
       fee = null;
       memo = null;
       created_at_time = null;
@@ -256,7 +250,7 @@ shared (init_msg) actor class (
   // withdrawCollateral
   public type WithdrawCollateralError = {
     #InsufficientFunds : { balance : Nat };
-    #BadHealth : { old_collateral : Nat; borrowed : Nat; amount: Nat};
+    #BadHealth : { old_collateral : Nat; borrowed : Nat; amount : Nat };
     #HasDebt : { borrowedAmount : Nat };
     #TransferError : ICRC.TransferError;
   };
@@ -274,11 +268,13 @@ shared (init_msg) actor class (
     let newCollateralBalance : Nat = old_collateral - amount;
 
     if (not (await isHealthy(newCollateralBalance, borrowed))) {
-      return #err(#BadHealth { 
-        old_collateral = old_collateral; 
-        borrowed = borrowed; 
-        amount = amount 
-        });
+      return #err(
+        #BadHealth {
+          old_collateral = old_collateral;
+          borrowed = borrowed;
+          amount = amount;
+        }
+      );
     };
 
     depositedCollateral.put(msg.caller, newCollateralBalance);
@@ -307,7 +303,7 @@ shared (init_msg) actor class (
   // borrow
   public type BorrowError = {
     #InsufficientFunds : { balance : Nat };
-    #BadHealth : { old_collateral : Nat; borrowed : Nat; amount: Nat};
+    #BadHealth : { old_collateral : Nat; borrowed : Nat; amount : Nat };
     #TransferError : ICRC.TransferError;
   };
 
@@ -320,11 +316,13 @@ shared (init_msg) actor class (
 
     // TODO check if there is enough to lending token to borrow
     if (not (await isHealthy(collateral, new_borrowedLendingToken))) {
-      return #err(#BadHealth { 
-        old_collateral = collateral; 
-        borrowed = old_borrowedLendingToken; 
-        amount = amount
-        });
+      return #err(
+        #BadHealth {
+          old_collateral = collateral;
+          borrowed = old_borrowedLendingToken;
+          amount = amount;
+        }
+      );
     };
 
     // if its not on the map it adds it
@@ -357,7 +355,7 @@ shared (init_msg) actor class (
   // repay
   public type RepayError = {
     #InsufficientFunds : { balance : Nat };
-    #BadHealth : { old_collateral : Nat; borrowed : Nat; amount: Nat};
+    #BadHealth : { old_collateral : Nat; borrowed : Nat; amount : Nat };
     #TransferError : ICRC.TransferFromError;
   };
 
@@ -366,17 +364,17 @@ shared (init_msg) actor class (
 
     let ?(old_borrowedLendingToken, oldTime) = borrowedLendingToken.get(msg.caller);
     let currentTime = Time.now();
-    
+
     let withdrawWithFeeAmt = await withdrawWithFee(amount, Int.abs(currentTime - oldTime));
     let new_borrowedLendingToken : Nat = old_borrowedLendingToken - amount;
 
     borrowedLendingToken.put(msg.caller, (new_borrowedLendingToken, Time.now()));
 
-    let transfer_result = await token.icrc2_transfer_from({
-      amount = withdrawWithFeeAmt;
+    let transfer_result = await token.icrc1_transfer({
+      from_subaccount = null;
       from = { owner = msg.caller; subaccount = null };
       to = { owner = Principal.fromActor(this); subaccount = null };
-      spender_subaccount = null;
+      amount = withdrawWithFeeAmt;
       fee = null;
       memo = null;
       created_at_time = null;
@@ -403,11 +401,10 @@ shared (init_msg) actor class (
 
   };
 
-
   // liquidate
   public type LiquidateError = {
     #InsufficientFunds : { balance : Nat };
-    #IsHealthy : { collateral : Nat; borrowed : Nat};
+    #IsHealthy : { collateral : Nat; borrowed : Nat };
     #TransferError : ICRC.TransferError;
   };
 
@@ -415,7 +412,8 @@ shared (init_msg) actor class (
     let borrowed = await getBorrowedLendingToken(user);
     let collateral = await getDepositedCollateral(msg.caller);
 
-    if (await isHealthy(collateral, borrowed)) { // cant liquidate if is healthy
+    if (await isHealthy(collateral, borrowed)) {
+      // cant liquidate if is healthy
       return #err(#IsHealthy { collateral = collateral; borrowed = borrowed });
     };
 
@@ -432,9 +430,8 @@ shared (init_msg) actor class (
   // --------------------------- TIMERS ---------------------------
 
   public func startTimers() : async () {
-    let _ = Timer.recurringTimer<system>(#seconds (60), updateCollateralPrice);
-    let _ = Timer.recurringTimer<system>(#seconds (10 * 60), checkRandomBorrowerLiquidatable);
+    let _ = Timer.recurringTimer<system>(#seconds(60), updateCollateralPrice);
+    let _ = Timer.recurringTimer<system>(#seconds(10 * 60), checkRandomBorrowerLiquidatable);
   };
 
 };
-
