@@ -1,3 +1,5 @@
+#!/bin/bash
+
 dfx deploy icp --argument "
   (variant {
     Init = record {

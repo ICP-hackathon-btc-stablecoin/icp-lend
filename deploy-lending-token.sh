@@ -1,3 +1,5 @@
+#!/bin/bash
+
 dfx deploy usdt --argument "
   (variant {
     Init = record {

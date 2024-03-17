@@ -11,7 +11,7 @@ dfx stop
 dfx start --clean
 ```
 
-On another terminal, initialize the OWNER variable:
+In another terminal, initialize the OWNER variable:
 
 ```bash
 export OWNER=$(dfx identity get-principal)
@@ -20,19 +20,19 @@ export OWNER=$(dfx identity get-principal)
 Deploy the lending token canister:
 
 ```bash
-./deploy-lending-token
+./deploy-lending-token.sh
 ```
 
 Deploy the collateral token canister:
 
 ```bash
-./deploy-collateral-token
+./deploy-collateral-token.sh
 ```
 
 Deploy the backend canister:
 
 ```bash
-./deploy-backend
+./deploy-backend.sh
 ```
 
 Deploy internet identity canister:
@@ -41,50 +41,25 @@ Deploy internet identity canister:
 dfx deploy internet_identity
 ```
 
-Deploy the frontend canister:
+On another terminal, install frontend dependencies and launch it:
 
 ```bash
-dfx deploy icp_lend_frontend
+npm install
+npm start
 ```
 
-Open browser with internet identity:
+Open your browser, log in, and copy your internet identity.
+
+Fund your identity with tokens:
+
+```bash
+./fund-identity.sh <YOUR_IDENTITY>
+```
+
+---
 
 ```bash
 URL: <ICP_LEND_BACKEND_URL> + "&ii=" + <INTERNET_IDENTITY_CANISTER>
 
 EX: <http://127.0.0.1:4943/?canisterId=b77ix-eeaaa-aaaaa-qaada-cai&id=br5f7-7uaaa-aaaaa-qaaca-cai&ii=http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943/>
-```
-
-Log in and paste identity
-
-Fund identity with tokens:
-
-```bash
-dfx canister call icp icrc1_transfer '(
-record {
-to = record {
-owner = principal "kz7ef-wjxdo-kj7vo-kq366-nombe-2psyz-4e7ct-uptnb-p77lk-ors6o-2qe";
-subaccount = null;
-};
-fee = null;
-memo = null;
-from_subaccount = null;
-created_at_time = null;
-amount = 100_000_000;
-},
-)'
-
-dfx canister call usdt icrc1_transfer '(
-record {
-to = record {
-owner = principal <IDENTITY>;
-subaccount = null;
-};
-fee = null;
-memo = null;
-from_subaccount = null;
-created_at_time = null;
-amount = 100_000_000;
-},
-)'
 ```
