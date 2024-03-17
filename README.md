@@ -2,7 +2,7 @@
 
 ICP Lend stands at the forefront of decentralized finance (DeFi) protocols tailored specifically for the Internet Computer Protocol (ICP) ecosystem.
 
-Harnessing the distinctive capabilities of ICP, such as its support for HTTP requests and Timers, ICP Lend seamlessly integrates price feeds and executes automated liquidations and real-time price updates with unparalleled efficiency.
+Harnessing the distinctive capabilities of ICP, such as its support for [HTTP requests](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/advanced-features/https-outcalls/https-outcalls-how-to-use/) and [Timers](https://internetcomputer.org/docs/current/motoko/main/timers/), ICP Lend seamlessly integrates price feeds and executes automated liquidations and real-time price updates with unparalleled efficiency.
 
 ## How it works
 
@@ -14,7 +14,7 @@ Borrowers have the opportunity to secure stablecoin loans, provided they pledge 
 
 Borrowers retain the ability to withdraw collateral as long as they maintain an over-collateralization level of at least 50%.
 
-Liquidation occurs if a borrower's collateralization ratio drops below 50%, resulting in the forfeiture of their collateral funds.
+Liquidation occurs automatically if a borrower's collateralization ratio drops below 50%, resulting in the forfeiture of their collateral funds.
 
 ICP Lend represents a paradigm shift in DeFi, offering a robust lending protocol tailored to the unique capabilities of the ICP network, while empowering users with enhanced flexibility, security, and efficiency.
 
